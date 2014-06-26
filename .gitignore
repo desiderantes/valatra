@@ -1,3 +1,5 @@
-valatra
 *~
 *.o
+*.c
+*.lib
+*.dll
