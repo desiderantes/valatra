@@ -1,6 +1,6 @@
 VALAC := valac
 FLAGS :=
-PKG := --pkg gio-2.0 --pkg gee-1.0
+PKG := --pkg gio-2.0
 SRC := $(shell find 'src/' -type f -name "*.vala")
 EXE := valatra
 

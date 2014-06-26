@@ -1,13 +1,11 @@
-using Gee;
-
 namespace Valatra {
   public class HTTPResponse : GLib.Object {
     private int status_;
     private string status_msg_;
     private string body_;
 
-    public HashMap<string, string> headers;
-    public HashMap<string, Cookie> session;
+    public HashTable<string, string> headers;
+    public HashTable<string, Cookie> session;
 
     public int status {
       get { return status_; }
@@ -29,8 +27,8 @@ namespace Valatra {
       status_msg_ = "OK";
       body_ = "";
 
-      headers = new HashMap<string, string>();
-      session = new HashMap<string, Cookie>();
+      headers = new HashTable<string, string>(str_hash, str_equal);
+      session = new HashTable<string, Cookie>(str_hash, str_equal);
 
       default_headers();
     }
@@ -39,8 +37,8 @@ namespace Valatra {
       status_ = status;
       status_msg_ = msg;
       body_ = "";
-      headers = new HashMap<string, string>();
-      session = new HashMap<string, Cookie>();
+      headers = new HashTable<string, string>(str_hash, str_equal);
+      session = new HashTable<string, Cookie>(str_hash, str_equal);
 
       default_headers();
     }
@@ -73,23 +71,20 @@ namespace Valatra {
         if(body != null && body_.length != 0) {
           headers["Content-length"] = body_.length.to_string();
         } else {
-          headers.unset("Content-length");
-          headers.unset("Content-type");
+          headers.remove ("Content-length");
+          headers.remove ("Content-type");
         }
 
-        foreach(var ent in headers.entries) {
-          string key = ent.key;
-          string val = ent.value;
+     	headers.foreach ((key, val) => {
+			dos.put_string("%s: %s\r\n".printf (key, val));
+		});
 
-          dos.put_string(@"$key: $val\r\n");
-        }
-
-        foreach(var cookie in session.entries) {
-          var val = cookie.value.create();
-
-          dos.put_string(@"Set-cookie: $val\r\n");
-        }
-
+		session.foreach ((key, val) => {
+			var v = val.create();
+			stderr.printf ("coockie '%s'".printf(v));
+			dos.put_string("Set-Cookie: %s\r\n".printf (v));
+		});
+		
         dos.put_string(@"\r\n$body_");
       } catch(IOError e) {
         stderr.printf("HTTPResponse.create(): %s\n", e.message);

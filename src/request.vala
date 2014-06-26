@@ -1,5 +1,3 @@
-using Gee;
-
 namespace Valatra {
   const string[] HTTP_METHODS = { "OPTIONS",
     "GET",
@@ -25,9 +23,9 @@ namespace Valatra {
     public bool accept_body;
     public unowned App app;
 
-    public HashMap<string, string> params;
-    public HashMap<string, string> headers;
-    public HashMap<string, string> session;
+    public HashTable<string, string> params;
+    public HashTable<string, string> headers;
+    public HashTable<string, string> session;
 
     public string method {
       get { return method_; }
@@ -49,10 +47,10 @@ namespace Valatra {
     }
 
     public HTTPRequest(SocketConnection c) {
-      headers = new HashMap<string, string>();
-      params  = new HashMap<string, string>();
-      session = new HashMap<string, string>();
-
+      headers = new HashTable<string, string>(str_hash, str_equal);
+      params  = new HashTable<string, string>(str_hash, str_equal);
+      session = new HashTable<string, string>(str_hash, str_equal);
+	  
       method_ = null;
       uri_    = null;
       body_   = null;

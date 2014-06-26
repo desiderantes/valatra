@@ -1,11 +1,10 @@
 using GLib;
-using Gee;
 
 namespace Valatra {
   public class Route : Object {
     private string route_;
     private Regex regex_;
-    private ArrayList<string> captures;
+    private Array<string> captures;
     
     public string route {
       get { return route_; }
@@ -18,7 +17,7 @@ namespace Valatra {
     
     public Route(string route) {
       route_ = route;
-      captures = new ArrayList<string>();
+      captures = new Array<string>();
       
       try {
         compile();
@@ -40,7 +39,7 @@ namespace Valatra {
           route.append(p);
         } else {
           var cap = p.slice(1, p.length);
-          captures.add(cap);
+          captures.append_val (cap);
           route.append(@"(?<$cap>\\w+)");
         }
       }
@@ -56,9 +55,10 @@ namespace Valatra {
       var result = regex_.match(r.path, 0, out matchinfo);
       
       if(result) {
-        foreach(var cap in captures) {
-          r.params[cap] = matchinfo.fetch_named(cap);
-        }
+		for (int i = 0; i < captures.length ; i++) {
+			var cap = captures.index(i);
+			r.params[cap] = matchinfo.fetch_named(cap);
+		}
       }
       
       return result;

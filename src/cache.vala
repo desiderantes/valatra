@@ -1,5 +1,3 @@
-using Gee;
-
 namespace Valatra {
 
   public class CacheEntry : GLib.Object {
@@ -39,10 +37,10 @@ namespace Valatra {
   }
 
   public class Cache : GLib.Object {
-    private HashMap<string, CacheEntry> entries;
+    private HashTable<string, CacheEntry> entries;
 
     public Cache() {
-      entries  = new HashMap<string, CacheEntry>();
+      entries  = new HashTable<string, CacheEntry>(str_hash, str_equal);
     }
 
     public void add(string path, string content) {
@@ -59,9 +57,9 @@ namespace Valatra {
     }
 
     public void invalidate(string path) {
-      if(entries.has_key(path)) {
-        entries.unset(path);
-      }
+		if(entries.contains(path)) {
+			entries.remove (path);
+		}
     }
   }
 }

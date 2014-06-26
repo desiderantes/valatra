@@ -1,5 +1,3 @@
-using Gee;
-
 namespace Valatra {
   public delegate void RouteFunc(HTTPRequest req, HTTPResponse res) throws HTTPStatus;
 
@@ -54,9 +52,9 @@ namespace Valatra {
     public Cache cache;
 
     /* hacky: 7 is the size of HTTP_METHODS */
-    private ArrayList<RouteWrapper> routes[7];
+    private Array<RouteWrapper> routes[7];
 
-    private ArrayList<StatusWrapper> status_handles;
+    private Array<StatusWrapper> status_handles;
 
     public uint16 port {
       get { return port_; }
@@ -74,16 +72,16 @@ namespace Valatra {
       server = new SocketService();
       cache = new Cache();
 
-      status_handles = new ArrayList<StatusWrapper>();
+      status_handles = new Array<StatusWrapper>();
 
       for(int i = 0; i < HTTP_METHODS.length; ++i) {
-        routes[i] = new ArrayList<RouteWrapper>();
+        routes[i] = new Array<RouteWrapper> ();
       }
 
     }
 
     public void on(int stat, RouteFunc func) {
-      status_handles.add(new StatusWrapper(stat, func));
+      status_handles.append_val (new StatusWrapper(stat, func));
     }
 
     /* probably not a good idea to override get... */
@@ -115,7 +113,7 @@ namespace Valatra {
 
       var route = new Route(path);
       stdout.printf("Creating %s \"%s\"\n", meth, route.route);
-      routes[index].add(new RouteWrapper(route, func));
+	  routes[index].append_val (new RouteWrapper(route, func));
     }
 
     public async bool start() {
@@ -146,9 +144,9 @@ namespace Valatra {
       var res = new HTTPResponse.with_status(stat, stat.to_string());
       int index = -1;
 
-      var size = status_handles.size;
+      var size = status_handles.length;
       for(var i = 0; i < size; ++i) {
-        var handle = status_handles[i];
+        var handle = status_handles.index (i);
         if(handle.status == stat) {
           index = i;
           break;
@@ -160,7 +158,7 @@ namespace Valatra {
         res.body = @"<h1>$stat</h1>";
       } else {
         try {
-          status_handles[index].func(req, res);
+          status_handles.index (index).func(req, res);
         } catch(HTTPStatus stat) {
           res.body = "Sorry, something just exploded";
         }
@@ -241,10 +239,11 @@ namespace Valatra {
           return;
         }
 
-        ArrayList<RouteWrapper> array = routes[index];
+        unowned Array<RouteWrapper> array = routes[index];
         RouteWrapper wrap = null;
 
-        foreach(var elem in array) {
+        for(int i=0; i < array.length; i++) {
+			var elem = array.index (i);	
           if(elem.route.matches(request)) {
             wrap = elem;
             break;
