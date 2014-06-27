@@ -101,19 +101,19 @@ namespace Valatra {
     }
 	
     /* probably not a good idea to override get... */
-    public new void get(string route, RouteFunc func) {
-      this.route("GET", route, func);
+    public new RouteWrapper get(string route, RouteFunc func) {
+      return this.route("GET", route, func);
     }
 
-    public void post(string route, RouteFunc func) {
-      this.route("POST", route, func);
+    public RouteWrapper post(string route, RouteFunc func) {
+      return this.route("POST", route, func);
     }
 
-    public void put(string route, RouteFunc func) {
-      this.route("PUT", route, func);
+    public RouteWrapper put(string route, RouteFunc func) {
+      return this.route("PUT", route, func);
     }
 
-    public void route(string meth, string path, RouteFunc func) {
+    public RouteWrapper? route(string meth, string path, RouteFunc func) {
 
       int index = -1;
       for(int i = 0; i < HTTP_METHODS.length; ++i) {
@@ -124,12 +124,15 @@ namespace Valatra {
 
       if(index == -1) {
         stderr.printf("App.route(): Bad method: %s\n", meth);
-        return;
+        return null;
       }
 
       var route = new Route(path);
       stdout.printf("Creating %s \"%s\"\n", meth, route.route);
-	  routes[index].append_val (new RouteWrapper(route, func));
+	  var wrapper = new RouteWrapper(route, func);
+      routes[index].append_val (wrapper);
+	  
+	  return wrapper;
     }
 
     public async bool start() {
