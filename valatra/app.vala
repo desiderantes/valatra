@@ -84,6 +84,22 @@ namespace Valatra {
       status_handles.append_val (new StatusWrapper(stat, func));
     }
 
+	public StatusWrapper? get_status_handler (int stat) {
+		StatusWrapper? result = null;
+		var size = status_handles.length;
+		
+		for(var i = 0; i < size; ++i) {
+			var handle = status_handles.index (i);
+
+			if(handle.status == stat) {
+				result = handle;
+				break;
+			}
+		}
+
+		return result;
+    }
+	
     /* probably not a good idea to override get... */
     public new void get(string route, RouteFunc func) {
       this.route("GET", route, func);
@@ -140,31 +156,22 @@ namespace Valatra {
         return true;
     }
 
-    private HTTPResponse get_status_handle(int stat, HTTPRequest req) {
-      var res = new HTTPResponse.with_status(stat, stat.to_string());
-      int index = -1;
+    private HTTPResponse get_status_handle (int stat, HTTPRequest req) {
+		var res = new HTTPResponse.with_status(stat, stat.to_string());
+		var handle = get_status_handler (stat);
 
-      var size = status_handles.length;
-      for(var i = 0; i < size; ++i) {
-        var handle = status_handles.index (i);
-        if(handle.status == stat) {
-          index = i;
-          break;
-        }
-      }
+		if(handle == null) {
+			res.type ("html");
+			res.body = @"<h1>$stat</h1>";
+		} else {
+			try {
+				handle.func(req, res);
+			} catch(HTTPStatus stat) {
+				res.body = "Sorry, something just exploded";
+			}
+		}
 
-      if(index == -1) {
-        res.type("html");
-        res.body = @"<h1>$stat</h1>";
-      } else {
-        try {
-          status_handles.index (index).func(req, res);
-        } catch(HTTPStatus stat) {
-          res.body = "Sorry, something just exploded";
-        }
-      }
-
-      return res;
+		return res;
     }
 
     private async void process_request(SocketConnection conn) {
