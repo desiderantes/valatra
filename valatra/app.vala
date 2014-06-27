@@ -172,24 +172,33 @@ namespace Valatra {
         var dos = new DataOutputStream(conn.output_stream);
 
         var request = new HTTPRequest(conn);
-
-        StringBuilder sb = new StringBuilder();
-
+		
+		var data = new ByteArray();
+		uint8[] buf = new uint8[100];
+		
         while(true) {
-          uint8[] buf = new uint8[100];
-          ssize_t ret = conn.socket.receive(buf);
+			try {
+				ssize_t ret = conn.socket.receive(buf);
 
-          if(ret > 0) {
-            sb.append((string)buf);
-          }
+				if(ret > 0) {
+					data.append (buf[0:ret]);
+				}
 
-          if(ret < 100) {
-            break;
-          }
+				if(ret < 100) {
+					break;
+				}
+			} catch (Error e) {
+				if (!(e is IOError.WOULD_BLOCK))
+					throw e;
+			}
         }
+		
+		// ensure string is null terminated
+		data.append (new uint8[] {0});
+		
+        var req_str = (string)data.data;
 
-        var req_str = sb.str;
-
+	
         while(true) {
           if(req_str == "" || req_str == null) {
             break;
