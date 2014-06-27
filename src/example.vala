@@ -3,8 +3,14 @@
 using Valatra;
 
 public static int main (string[] args) {
-  var app = new App();
+  var app = new App ();
+  var auth = new BasicHTTPAuthFilter (app, "Valatra");
   app.port = 3333;
+
+  auth.authenticate.connect ((sender, args) => {
+	stderr.printf ("Authentication required: %s - %s\n".printf (args.username, args.password));
+	args.success = args.username == "test" && args.password == "test";
+  });
 
   app.on(404, (req, res) => {
     res.type("text/html");
@@ -29,6 +35,11 @@ public static int main (string[] args) {
 
     res.body = @"Hello $user, here is post #$post.";
   });
+
+  app.get("/login", (req, res) => {
+	var user = req.headers["Authorization"];
+    res.body += @"Hello '$user'.";
+  }).before (auth);
 
   app.get("/cookie", (req, res) => {
     var cookie = req.session["mycookie"];
