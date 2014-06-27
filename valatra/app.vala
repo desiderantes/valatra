@@ -1,10 +1,31 @@
 namespace Valatra {
   public delegate void RouteFunc(HTTPRequest req, HTTPResponse res) throws HTTPStatus;
 
-  private class RouteWrapper : GLib.Object {
-    private unowned RouteFunc func_;
-    private Route route_;
+  
+	public abstract class HTTPModule : Object {
+		public unowned App app { get; private set; }
 
+		public HTTPModule (App app) {
+			this.app = app;
+		}
+	}
+
+	public abstract class HTTPFilterModule : HTTPModule {
+		public HTTPFilterModule (App app) {
+			base (app);
+		}
+
+		public abstract void filter (HTTPRequest req, HTTPResponse res) throws HTTPStatus;
+	}
+
+  public class RouteWrapper : GLib.Object {
+    private unowned RouteFunc func_;
+	
+    private Route route_;
+	
+	private List<unowned HTTPFilterModule> before_modules_ = new List<unowned HTTPFilterModule> ();
+	private List<unowned HTTPFilterModule> after_modules_ = new List<unowned HTTPFilterModule> ();
+	
     public RouteFunc func {
       get { return func_; }
       set { func_ = value;}
@@ -15,10 +36,34 @@ namespace Valatra {
       set { route_ = value; }
     }
 
+	
     public RouteWrapper(Route? r, RouteFunc f) {
       func_ = f;
       route_ = r;
     }
+	
+	public RouteWrapper before (HTTPFilterModule m) {
+		before_modules_.append (m);
+		return this;
+	}
+	
+	public RouteWrapper after (HTTPFilterModule m) {
+		after_modules_.append (m);
+		return this;
+	}
+	
+	public HTTPResponse process_request (HTTPRequest request) throws HTTPStatus {
+		var res =  new HTTPResponse();
+		
+		foreach(var m in this.before_modules_) {
+			m.filter (request, res);
+		}
+		this.func_(request, res);
+		foreach(var m in this.after_modules_) {
+			m.filter (request, res);
+		}
+		return res;
+	}
   }
 
   public errordomain HTTPStatus {
@@ -272,9 +317,8 @@ namespace Valatra {
         HTTPResponse res = null;
 
         if(wrap != null) {
-          res = new HTTPResponse();
           try {
-            wrap.func(request, res);
+			res = wrap.process_request (request);
           } catch(HTTPStatus stat) {
             res = get_status_handle(int.parse(stat.message), request);
           }
