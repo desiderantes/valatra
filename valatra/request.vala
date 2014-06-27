@@ -153,7 +153,7 @@ namespace Valatra {
           if(field == "Cookie") {
             string[] cookies = val.split(";");
             foreach(string cookie in cookies) {
-              string[] tmp = cookie.split("=");
+              string[] tmp = cookie.strip ().split("=");
               session[tmp[0]] = tmp[1];
             }
           }
