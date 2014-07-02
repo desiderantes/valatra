@@ -1,21 +1,15 @@
 namespace Valatra {
-  public delegate void RouteFunc(HTTPRequest req, HTTPResponse res) throws HTTPStatus;
-
+	public delegate void RouteFunc(HTTPRequest req, HTTPResponse res) throws HTTPStatus;
   
-	public abstract class HTTPModule : Object {
-		public unowned App app { get; private set; }
-
-		public HTTPModule (App app) {
-			this.app = app;
-		}
+	public abstract class Plugin : Object {
+		public virtual void on_install (Valatra.App app) { }
 	}
 
-	public abstract class HTTPFilterModule : HTTPModule {
-		public HTTPFilterModule (App app) {
-			base (app);
+	public abstract class HTTPPlugin : Plugin {
+		public HTTPPlugin () {
 		}
-
-		public abstract void filter (HTTPRequest req, HTTPResponse res) throws HTTPStatus;
+	
+		public abstract void process_request (HTTPRequest req, HTTPResponse res) throws HTTPStatus;
 	}
 
   public class RouteWrapper : GLib.Object {
@@ -23,8 +17,8 @@ namespace Valatra {
 	
     private Route route_;
 	
-	private List<unowned HTTPFilterModule> before_modules_ = new List<unowned HTTPFilterModule> ();
-	private List<unowned HTTPFilterModule> after_modules_ = new List<unowned HTTPFilterModule> ();
+	private List<HTTPPlugin> before_modules_ = new List<HTTPPlugin> ();
+	private List<HTTPPlugin> after_modules_ = new List<HTTPPlugin> ();
 	
     public RouteFunc func {
       get { return func_; }
@@ -35,19 +29,18 @@ namespace Valatra {
       get { return route_; }
       set { route_ = value; }
     }
-
 	
     public RouteWrapper(Route? r, RouteFunc f) {
-      func_ = f;
-      route_ = r;
+		this.func_ = f;
+		this.route_ = r;
     }
 	
-	public RouteWrapper before (HTTPFilterModule m) {
+	public RouteWrapper before (HTTPPlugin m) {
 		before_modules_.append (m);
 		return this;
 	}
 	
-	public RouteWrapper after (HTTPFilterModule m) {
+	public RouteWrapper after (HTTPPlugin m) {
 		after_modules_.append (m);
 		return this;
 	}
@@ -56,11 +49,11 @@ namespace Valatra {
 		var res =  new HTTPResponse();
 		
 		foreach(var m in this.before_modules_) {
-			m.filter (request, res);
+			m.process_request (request, res);
 		}
 		this.func_(request, res);
 		foreach(var m in this.after_modules_) {
-			m.filter (request, res);
+			m.process_request (request, res);
 		}
 		return res;
 	}
@@ -94,6 +87,8 @@ namespace Valatra {
 
     private uint16 port_ = 3000;
     private SocketService server;
+	private List<Plugin> plugins_;
+	
     public Cache cache;
 
     /* hacky: 7 is the size of HTTP_METHODS */
@@ -124,7 +119,14 @@ namespace Valatra {
       }
 
     }
-
+		
+	public Plugin use (Plugin plugin) {
+		this.plugins_.append (plugin);
+		
+		plugin.on_install (this);
+		return plugin;
+	}
+		
     public void on(int stat, RouteFunc func) {
       status_handles.append_val (new StatusWrapper(stat, func));
     }
@@ -180,8 +182,7 @@ namespace Valatra {
 	  return wrapper;
     }
 
-    public async bool start() {
-
+    public async virtual bool start() {
         server.incoming.connect( (conn) => {
           InetSocketAddress addr;
           try {
