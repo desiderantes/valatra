@@ -1,10 +1,10 @@
 VALAC := valac
 FLAGS := 
 PKG := --pkg gio-2.0
-SRC := $(shell find 'src/' -type f -name "*.vala")
+SRC := $(shell find 'app/' -type f -name "*.vala")
 SRC_LIB := $(shell find 'valatra/' -type f -name "*.vala")
 LIB := valatra/valatra-1
-EXE := src/example
+EXE := app/example
 LIB_STATIC_EXT :=
 
 CPKGS := $(shell pkg-config --cflags --libs gio-2.0 glib-2.0 gobject-2.0)
@@ -29,7 +29,7 @@ $(LIB).stamp: $(SRC_LIB)
 	touch $(LIB).stamp
 	
 $(EXE): $(SRC) $(LIB).$(LIB_STATIC_EXT)
-	$(VALAC) $(FLAGS) -C -b src $(SRC) --vapidir=valatra --pkg valatra-1 $(PKG)
+	$(VALAC) $(FLAGS) -C -b app $(SRC) --vapidir=valatra --pkg valatra-1 $(PKG)
 	$(CC) -static -o $@ $(SRC:.vala=.c) -Ivalatra -Lvalatra -lvalatra-1 $(CPKGS) 
 
 debug:
@@ -40,7 +40,7 @@ genc:
 
 clean:
 	rm -f valatra/*.c valatra/*.o valatra/*.stamp valatra/*.o.stamp $(LIB).$(LIB_STATIC_EXT) $(LIB).vapi $(LIB).h
-	rm -f $(EXE) $(EXE).exe src/*.c src/*.o
+	rm -f $(EXE) $(EXE).exe app/*.c app/*.o
 	
 .PHONY= all clean
 
