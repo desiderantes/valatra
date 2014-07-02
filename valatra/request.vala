@@ -9,7 +9,6 @@ namespace Valatra {
     "CONNECT"
   };
 
-  // TODO: true error handling, rather than stderr
   public class HTTPRequest : GLib.Object {
     private StringBuilder str_;
     private SocketConnection conn;
@@ -70,7 +69,7 @@ namespace Valatra {
         var pieces = line.split(" ");
 
           if(pieces.length != 3) {
-            stderr.printf("Malformed request: \"%s\"\n", line);
+            warning ("parse: malformed request: \"%s\"", line);
             return;
           } else {
             var method = pieces[0];
@@ -86,7 +85,7 @@ namespace Valatra {
             }
 
             if(!validMethod) {
-              stderr.printf("Invalid method: \"%s\"\n", method);
+              critical ("parse: invalid method: \"%s\"", method);
             }
 
             method_ = method;
@@ -110,7 +109,7 @@ namespace Valatra {
             }
 
             if(proto != "HTTP/1.1") {
-              stderr.printf("Unsupported protocol: \"%s\"\n", proto);
+              critical ("parse: unsupported protocol: \"%s\"", proto);
             }
           }
         }
@@ -120,7 +119,7 @@ namespace Valatra {
           try {
             addr = (InetSocketAddress)conn.get_remote_address();
           } catch(Error e) {
-            stderr.printf("HTTPRequest.parse().: %s\n", e.message);
+            critical ("parse.get_remote_address: %s", e.message);
             return;
           }
 

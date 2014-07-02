@@ -81,13 +81,13 @@ namespace Valatra {
 
 		session.foreach ((key, val) => {
 			var v = val.create();
-			stderr.printf ("coockie '%s'".printf(v));
+			debug ("coockie '%s'".printf(v));
 			dos.put_string("Set-Cookie: %s\r\n".printf (v));
 		});
 		
         dos.put_string(@"\r\n$body_");
       } catch(IOError e) {
-        stderr.printf("HTTPResponse.create(): %s\n", e.message);
+        critical ("create: %s", e.message);
       }
     }
   }

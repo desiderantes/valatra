@@ -103,7 +103,7 @@ namespace Valatra {
         try {
           server.add_inet_port(value, null);
         } catch(Error e) {
-          stderr.printf("App.port.set: %s\n", e.message);
+          critical ("port.set: %s\n", e.message);
         }
       }
     }
@@ -170,12 +170,12 @@ namespace Valatra {
       }
 
       if(index == -1) {
-        stderr.printf("App.route(): Bad method: %s\n", meth);
+        critical ("App.route(): Bad method: %s\n", meth);
         return null;
       }
 
       var route = new Route(path);
-      stdout.printf("Creating %s \"%s\"\n", meth, route.route);
+      message ("Creating %s \"%s\"\n", meth, route.route);
 	  var wrapper = new RouteWrapper(route, func);
       routes[index].append_val (wrapper);
 	  
@@ -188,7 +188,7 @@ namespace Valatra {
           try {
             addr = (InetSocketAddress)conn.get_remote_address();
           } catch(Error e) {
-            stderr.printf("App.start().incoming: %s\n", e.message);
+            critical ("App.start().incoming: %s\n", e.message);
             return false;
           }
 
@@ -197,7 +197,7 @@ namespace Valatra {
           return true;
         });
 
-        stdout.printf("Starting Valatra server on port %d...\n", port_);
+        message ("Starting Valatra server on port %d...\n", port_);
 
         server.start();
         new MainLoop().run();
@@ -296,7 +296,7 @@ namespace Valatra {
         }
 
         if(index == -1) {
-          stderr.printf("App.process_request(): Bad method: %s\n", request.method);
+          critical ("process_request: Bad method: %s\n", request.method);
 
           var r = get_status_handle(400, request);
 
@@ -329,7 +329,7 @@ namespace Valatra {
 
         res.create(dos);
       } catch (Error e) {
-        stderr.printf("App.process_request(): %s\n", e.message);
+        critical ("process_request(): %s\n", e.message);
       }
     }
   }

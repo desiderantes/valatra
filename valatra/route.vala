@@ -22,7 +22,7 @@ namespace Valatra {
       try {
         compile();
       } catch(RegexError e) {
-        stderr.printf("Route.new(): %s\n", e.message);
+        critical ("new: %s", e.message);
       }
     }
     

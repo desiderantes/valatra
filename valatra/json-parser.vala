@@ -226,7 +226,7 @@ namespace Valatra.Json {
 						if (current.owner != null) {
 							current = current.owner;
 						} else {
-							stderr.printf ("curret null\n");
+							critical ("parse: current is null");
 						}
 					} else if (ch == '[') {
 						var token = new ArrayToken ();

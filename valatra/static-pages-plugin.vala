@@ -27,19 +27,17 @@ namespace Valatra {
 				string page;
 				ulong usec = 0;
 				
-				stderr.printf ("serving page: %s", path);
-				
 				_timer.start ();
 				FileUtils.get_contents (path, out page);
 				res.body = page;
 				
-				stderr.printf (" in %gs (%luus)\n", _timer.elapsed (out usec), usec);
+				debug ("serving page: %s in %gs (%luus)\n", path, _timer.elapsed (out usec), usec);
 			} catch (FileError e) {
 				if (e is FileError.NOENT) {
-					stderr.printf (" not found\n");
+					debug ("page %s not found\n", path);
 					throw new HTTPStatus.STATUS ("404");
 				} else {
-					critical ("\nerror reading file %s: %s", path, e.message);
+					critical ("error reading file %s: %s\n", path, e.message);
 					throw new HTTPStatus.STATUS ("504");
 				}
 			}
