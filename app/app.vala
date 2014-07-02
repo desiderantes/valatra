@@ -4,9 +4,11 @@ using Valatra;
 
 public static int main (string[] args) {
   var app = new App ();
-  var auth = new BasicHTTPAuthFilter (app, "Valatra");
+  var auth = new BasicHTTPAuthPlugin ("Valatra");
   app.port = 3333;
 
+  app.use (auth);
+  
   auth.authenticate.connect ((sender, args) => {
 	stderr.printf ("Authentication required: %s - %s\n".printf (args.username, args.password));
 	args.success = args.username == "test" && args.password == "test";
