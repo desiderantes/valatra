@@ -21,7 +21,7 @@ endif
 all: $(LIB).$(LIB_STATIC_EXT) $(EXE)
 
 $(LIB).$(LIB_STATIC_EXT): $(LIB).stamp
-	$(foreach CSRC,$(SRC_LIB:.vala=), $(shell $(CC) -c $(CSRC).c -o $(CSRC).o -fPIC $(CPKGS)))
+	$(foreach CSRC,$(SRC_LIB:.vala=), $(shell $(CC) -DG_LOG_DOMAIN=\"Valatra\" -c $(CSRC).c -o $(CSRC).o -fPIC $(CPKGS)))
 	$(AR) rcs $@ $(SRC_LIB:.vala=.o)
 
 $(LIB).stamp: $(SRC_LIB)
