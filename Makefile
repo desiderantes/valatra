@@ -4,7 +4,7 @@ PKG := --pkg gio-2.0
 SRC := $(shell find 'app/' -type f -name "*.vala")
 SRC_LIB := $(shell find 'valatra/' -type f -name "*.vala")
 LIB := valatra/valatra-1
-EXE := app/example
+EXE := app/app
 LIB_STATIC_EXT :=
 
 CPKGS := $(shell pkg-config --cflags --libs gio-2.0 glib-2.0 gobject-2.0)
