@@ -15,14 +15,15 @@ namespace Valatra {
 		}
 		
 		protected virtual void process_request (HTTPRequest req, HTTPResponse res) throws HTTPStatus {
-			res.type("html");
-
+			
 			string req_path = req.path;
 			// serve static pages
 			if (req_path == null || req_path == "" || req_path == "/")
 				req_path = "index.html";
 			
 			string path = Path.build_path (Path.DIR_SEPARATOR_S, this.root_path, req_path.replace ("/", Path.DIR_SEPARATOR_S));
+			res.type(Valatra.get_mime_database ().get_file_mime_type (path) ?? "text/plain");
+
 			try {
 				string page;
 				ulong usec = 0;
@@ -31,13 +32,13 @@ namespace Valatra {
 				FileUtils.get_contents (path, out page);
 				res.body = page;
 				
-				debug ("serving page: %s in %gs (%luus)\n", path, _timer.elapsed (out usec), usec);
+				debug ("serving page: %s in %gs (%luus)", path, _timer.elapsed (out usec), usec);
 			} catch (FileError e) {
 				if (e is FileError.NOENT) {
 					debug ("page %s not found\n", path);
 					throw new HTTPStatus.STATUS ("404");
 				} else {
-					critical ("error reading file %s: %s\n", path, e.message);
+					critical ("error reading file %s: %s", path, e.message);
 					throw new HTTPStatus.STATUS ("504");
 				}
 			}
