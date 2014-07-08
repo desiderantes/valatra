@@ -41,6 +41,25 @@ namespace Valatra.Json {
 		}
 	}
 	
+	private class BooleanToken: JsonToken {
+		public bool value;
+		
+		public BooleanToken () {
+		}
+		
+		public BooleanToken.with_value (bool value) {
+			this.value = value;
+		}
+		
+		public override string to_string () {
+			return "%s: %s".printf (base.to_string (), value ? "true" : "false");
+		}
+		
+		public override string to_json (string sep = " ") {
+			return "%s".printf (value ? "true" : "false");
+		}
+	}
+	
 	private class NumberToken: JsonToken {
 		public double value;
 		
@@ -130,6 +149,8 @@ namespace Valatra.Json {
 							obj.instance.set (name.value, (string) ((StringToken)value).value);
 						} else if (_value is ObjectToken) {
 							obj.instance.set (name.value, (Object) ((ObjectToken)value).instance);
+						} else if (_value is BooleanToken) {
+							obj.instance.set (name.value, (bool) ((BooleanToken)value).value);
 						} else {
 							critical ("Unsupported value type: %s (%p)", _value.get_type ().name (), _value);
 						}
@@ -160,7 +181,7 @@ namespace Valatra.Json {
 		
 		if (data == null)
 			return null;
-			
+		
 		while (i < data.length) {
 			try {
 				skip_spaces (data, ref i);
@@ -275,6 +296,13 @@ namespace Valatra.Json {
 						token.end = i;
 						token.owner = current;
 						current = token;
+					} else if (ch == 't' || ch == 'f') {
+						var token = new BooleanToken ();
+						token.start = i;
+						token.value = parse_boolean (data, ref i);
+						token.end = i;
+						token.owner = current;
+						current = token;
 					} else {
 						throw new ParseError.SYNTAX ("syntax error, unexpected char '%c'".printf (ch));
 					}
@@ -355,5 +383,30 @@ namespace Valatra.Json {
 		}
 		
 		return double.parse (sb.str);
+	}
+	
+	private bool parse_boolean (string data, ref int i) throws Error {
+		if (i == data.length) {
+			throw new ParseError.EOF ("Unexpected EOF");
+		}
+		char ch = data[i];
+		var sb = new StringBuilder ();
+		
+		while (ch.isalpha ()) {
+			sb.append_c (ch);
+			i++;
+			if (i == data.length) {
+				throw new ParseError.EOF ("Unexpected EOF");
+			}
+				
+			ch = data[i];
+		}
+		
+		if (sb.str == "true")
+			return true;
+		else if (sb.str == "false")
+			return false;
+		else
+			throw new ParseError.SYNTAX ("syntax error parsing boolean");			
 	}
 }
