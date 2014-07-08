@@ -59,9 +59,11 @@ namespace Valatra {
 	}
   }
 
-  public errordomain HTTPStatus {
-    STATUS
-  }
+	public errordomain HTTPStatus {
+		STATUS,
+		BAD_REQUEST,
+		NOT_FOUND
+	}
 
   public class StatusWrapper : GLib.Object {
     private unowned RouteFunc func_;
@@ -321,10 +323,19 @@ namespace Valatra {
           try {
 			res = wrap.process_request (request);
           } catch(HTTPStatus stat) {
-            res = get_status_handle(int.parse(stat.message), request);
+			int code;
+			
+			if (stat is HTTPStatus.BAD_REQUEST) {
+				code = 504;
+			} else if (stat is HTTPStatus.NOT_FOUND) {
+				code = 404;
+			} else {
+				code = int.parse(stat.message);
+			}
+            res = get_status_handle (code, request);
           }
         } else {
-          res = get_status_handle(404, request);
+          res = get_status_handle (404, request);
         }
 
         res.create(dos);
