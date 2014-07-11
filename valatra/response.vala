@@ -85,7 +85,10 @@ namespace Valatra {
 			dos.put_string("Set-Cookie: %s\r\n".printf (v));
 		});
 		
-        dos.put_string(@"\r\n$body_");
+		if (body_ == null)
+			dos.put_string(@"\r\n");
+		else
+			dos.put_string(@"\r\n$body_");
       } catch(IOError e) {
         critical ("create: %s", e.message);
       }
