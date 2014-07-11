@@ -162,6 +162,10 @@ namespace Valatra {
       return this.route("PUT", route, func);
     }
 
+	public RouteWrapper delete (string route, RouteFunc func) {
+      return this.route("DELETE", route, func);
+    }
+	
     public RouteWrapper? route(string meth, string path, RouteFunc func) {
 
       int index = -1;
