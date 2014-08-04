@@ -1,11 +1,13 @@
 namespace Valatra {
 	public class BasicHTTPAuthArgs {
+		public HTTPRequest request { get; private set; }
 		public string username { get; set; }
 		public string? password { get; set; }
 		
 		public bool success { get; set; }
 		
-		public BasicHTTPAuthArgs (string username, string? password) {
+		public BasicHTTPAuthArgs (HTTPRequest request, string username, string? password) {
+			this.request = request;
 			this.username = username;
 			this.password = password;
 			this.success = false;
@@ -50,11 +52,14 @@ namespace Valatra {
 			
 			if (auth[0] == "Basic") {
 				var credentials = ((string) Base64.decode (auth[1])).split(":");
-				var args = new BasicHTTPAuthArgs (credentials[0], credentials[1]);
+				var args = new BasicHTTPAuthArgs (req, credentials[0], credentials[1]);
 				this.authenticate (this, args);
 				if (!args.success) {
-					res.halt (401);
+					res.halt (403); // forbidden
 				}
+			} else {
+				// no credentials provided
+				res.halt (401); // unauthorize
 			}
 		}
 	}
