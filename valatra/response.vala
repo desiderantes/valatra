@@ -2,7 +2,7 @@ namespace Valatra {
   public class HTTPResponse : GLib.Object {
     private int status_;
     private string status_msg_;
-    private string body_;
+    private uint8[] body_;
 
     public HashTable<string, string> headers;
     public HashTable<string, Cookie> session;
@@ -17,15 +17,15 @@ namespace Valatra {
       set { status_msg_ = value; }
     }
 
-    public string body {
+    public uint8[] body {
       get { return body_; }
       set { body_ = value;}
     }
-
+	
     public HTTPResponse() {
       status_ = 200;
       status_msg_ = "OK";
-      body_ = "";
+      body_ = null;
 
       headers = new HashTable<string, string>(str_hash, str_equal);
       session = new HashTable<string, Cookie>(str_hash, str_equal);
@@ -36,7 +36,7 @@ namespace Valatra {
     public HTTPResponse.with_status(int status, string msg) {
       status_ = status;
       status_msg_ = msg;
-      body_ = "";
+      body_ = null;
       headers = new HashTable<string, string>(str_hash, str_equal);
       session = new HashTable<string, Cookie>(str_hash, str_equal);
 
@@ -68,7 +68,7 @@ namespace Valatra {
       try {
         dos.put_string(@"HTTP/1.1 $status_ $status_msg_\r\n");
 
-        if(body != null && body_.length != 0) {
+        if(body_ != null && body_.length != 0) {
           headers["Content-length"] = body_.length.to_string();
         } else {
           headers.remove ("Content-length");
@@ -81,14 +81,14 @@ namespace Valatra {
 
 		session.foreach ((key, val) => {
 			var v = val.create();
-			debug ("coockie '%s'".printf(v));
 			dos.put_string("Set-Cookie: %s\r\n".printf (v));
 		});
 		
-		if (body_ == null)
-			dos.put_string(@"\r\n");
-		else
-			dos.put_string(@"\r\n$body_");
+		dos.put_string(@"\r\n");
+		if (body_ != null && body_.length > 0) {
+			size_t written;
+			dos.write_all (body_, out written);
+		}
       } catch(IOError e) {
         critical ("create: %s", e.message);
       }

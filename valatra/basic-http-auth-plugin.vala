@@ -34,8 +34,8 @@ namespace Valatra {
 				
 				// basic HTTP authentication
 				res.headers["WWW-Authenticate"] = "Basic realm=\"%s\"".printf (this.realm);
-				if ((res.body ?? "") == "") {
-					res.body = @"Authentication failed (BasicHttpAuth)";
+				if (res.body == null || res.body.length == 0) {
+					res.body = @"Authentication failed (BasicHttpAuth)".data;
 				}
 			});
 		}

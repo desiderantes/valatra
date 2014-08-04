@@ -17,14 +17,14 @@ public static int main (string[] args) {
   app.on(404, (req, res) => {
     res.type("text/html");
     var page = req.path;
-    res.body = @"<h1>404 Not found.</h1><br><p>Requested page $page not found</p>";
+    res.body = @"<h1>404 Not found.</h1><br><p>Requested page $page not found</p>".data;
   });
 
   app.get("/", (req, res) => {
     res.type("html");
 
     string ip = req.ip;
-    res.body = @"<h1>Hello from Vala!<br>Your IP is $ip</h1>";
+    res.body = @"<h1>Hello from Vala!<br>Your IP is $ip</h1>".data;
   });
 
   app.get("/status/:status", (req, res) => {
@@ -35,12 +35,12 @@ public static int main (string[] args) {
     var user = req.params["user"];
     var post = req.params["post_id"];
 
-    res.body = @"Hello $user, here is post #$post.";
+    res.body = @"Hello $user, here is post #$post.".data;
   });
 
   app.get("/login", (req, res) => {
 	var user = req.headers["Authorization"];
-    res.body += @"Hello '$user'.";
+    res.body = @"Hello '$user'.".data;
   }).before (auth);
 
   app.get("/cookie", (req, res) => {
@@ -54,10 +54,10 @@ public static int main (string[] args) {
       var timeOut = new Cookie("mycookie", "abc");
       timeOut.max_age = 5;
       res.session["mycookie"] = timeOut;
-      res.body = "Cookie was null, setting it to \"abc\"";
+      res.body = "Cookie was null, setting it to \"abc\"".data;
 
     } else {
-      res.body = @"Cookie was not null, it was $cookie";
+      res.body = @"Cookie was not null, it was $cookie".data;
     }
 
   });
@@ -72,13 +72,13 @@ public static int main (string[] args) {
     req.app.cache.set("/cache", ent);
 
     res.headers["Etag"] = ent.etag;
-    res.body = body;
+    res.body = body.data;
   });
 
   app.get("/cache/clear", (req, res) => {
     req.app.cache.invalidate("/cache");
 
-    res.body = "Cleared cache";
+    res.body = "Cleared cache".data;
   });
 
   // expects POST /post with body name=Some+Name&age=Some+age
@@ -87,7 +87,7 @@ public static int main (string[] args) {
     var name = req.params["name"];
     var age  = req.params["age"];
 
-    res.body = @"Oh, now I get it, $name is $age years old. Full POST data =>$body";
+    res.body = @"Oh, now I get it, $name is $age years old. Full POST data =>$body".data;
   });
 
   app.start();

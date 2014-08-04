@@ -25,12 +25,12 @@ namespace Valatra {
 			res.type(Valatra.get_mime_database ().get_file_mime_type (path) ?? "text/plain");
 
 			try {
-				string page;
+				uint8[] data;
 				ulong usec = 0;
 				
 				_timer.start ();
-				FileUtils.get_contents (path, out page);
-				res.body = page;
+				FileUtils.get_data (path, out data);
+				res.body = data;
 				
 				debug ("serving page: %s in %gs (%luus)", path, _timer.elapsed (out usec), usec);
 			} catch (FileError e) {
