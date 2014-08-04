@@ -85,7 +85,11 @@ namespace Valatra.Json {
 		} else if (value.type_name () == "gfloat") {
 			return "%f".printf (value.get_float ());
 		} else if (value.type_name () == "gboolean") {
-			return "%s".printf (value.get_boolean () ? "true" : "false");			
+			return "%s".printf (value.get_boolean () ? "true" : "false");
+		} else if (value.type ().is_enum ()) {
+			var cl = (EnumClass) value.type ().class_ref ();
+			unowned EnumValue? eval = cl.get_value (value.get_enum ());
+			return "\"%s\"".printf (eval.value_nick);
 		} else {
 			critical ("value_to_json: unsupported value type %s", value.type_name ());
 		}
