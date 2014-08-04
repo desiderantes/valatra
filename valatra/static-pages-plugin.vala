@@ -35,7 +35,7 @@ namespace Valatra {
 				debug ("serving page: %s in %gs (%luus)", path, _timer.elapsed (out usec), usec);
 			} catch (FileError e) {
 				if (e is FileError.NOENT) {
-					debug ("page %s not found\n", path);
+					debug ("page %s not found", path);
 					throw new HTTPStatus.STATUS ("404");
 				} else {
 					critical ("error reading file %s: %s", path, e.message);

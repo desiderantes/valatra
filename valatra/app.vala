@@ -193,7 +193,7 @@ namespace Valatra {
       }
 
       var route = new Route(path);
-      message ("Creating %s \"%s\"", meth, route.route);
+      debug ("Creating %s \"%s\"", meth, route.route);
 	  var wrapper = new RouteWrapper(route, func);
       routes[index].append_val (wrapper);
 	  
@@ -293,6 +293,8 @@ namespace Valatra {
 
         request.app = this;
 
+		debug ("processing request: '%s'", request.uri);
+		
         // check cache first
         var etag = request.headers["If-None-Match"];
         if(etag != null) {
