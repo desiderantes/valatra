@@ -89,7 +89,9 @@ namespace Valatra {
 
     private uint16 port_ = 3000;
     private SocketService server;
-	private List<Plugin> plugins_;
+	
+	private HashTable<string, Plugin> plugins_;
+	private int _plugin_id_counter = 0;
 	
     public Cache cache;
 
@@ -111,6 +113,7 @@ namespace Valatra {
     }
 
     public App() {
+	  plugins_ = new HashTable<string, Plugin> (str_hash, str_equal);
       server = new SocketService();
       cache = new Cache();
 
@@ -121,12 +124,21 @@ namespace Valatra {
       }
 
     }
+	
+	public T? get_plugin <T> (string id) {
+		return (T)plugins_.get (id);
+	}
+	
+	public string use (Plugin plugin, string? id = null) {
+		string plugin_id = id;
 		
-	public Plugin use (Plugin plugin) {
-		this.plugins_.append (plugin);
+		if (plugin_id == null)
+			plugin_id = "plugin-%d".printf (_plugin_id_counter++);
+			
+		this.plugins_.insert (plugin_id, plugin);
 		
 		plugin.on_install (this);
-		return plugin;
+		return plugin_id;
 	}
 		
     public void on(int stat, RouteFunc func) {
