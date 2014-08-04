@@ -22,7 +22,8 @@ namespace Valatra {
 				req_path = "index.html";
 			
 			string path = Path.build_path (Path.DIR_SEPARATOR_S, this.root_path, req_path.replace ("/", Path.DIR_SEPARATOR_S));
-			res.type(Valatra.get_mime_database ().get_file_mime_type (path) ?? "text/plain");
+			var mimetype = Valatra.get_mime_database ().get_file_mime_type (path) ?? "text/plain";
+			res.type(mimetype);
 
 			try {
 				uint8[] data;

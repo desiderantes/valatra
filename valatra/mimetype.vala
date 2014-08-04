@@ -60,6 +60,14 @@ namespace Valatra {
 			_mimes.insert (".js".casefold ().collate_key (), "application/javascript");
 			_mimes.insert (".css".casefold ().collate_key (), "text/css");
 			_mimes.insert (".txt".casefold ().collate_key (), "text/plain");
+			
+			_mimes.insert (".png".casefold ().collate_key (), "image/png");
+			_mimes.insert (".jpg".casefold ().collate_key (), "image/jpeg");
+			_mimes.insert (".gif".casefold ().collate_key (), "image/gif");
+			_mimes.insert (".bmp".casefold ().collate_key (), "image/bmp");
+			
+			_mimes.insert (".ogg".casefold ().collate_key (), "audio/ogg");
+			_mimes.insert (".mp3".casefold ().collate_key (), "audio/mpeg3");
 		}
 		
 		public void add_mime_type (string ext, string mime_type) {
