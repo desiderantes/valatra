@@ -241,6 +241,10 @@ namespace Valatra {
 		return res;
     }
 
+    private const int RECEIVE_BUFFER_SIZE = 64 * 1024;
+    private const int RECEIVE_MAX_RETRY = 1;
+    private const int RECEIVE_WAIT_USEC = 250000; // 250ms
+     
     private async void process_request(SocketConnection conn) {
       try {
         var dos = new DataOutputStream(conn.output_stream);
@@ -248,22 +252,35 @@ namespace Valatra {
         var request = new HTTPRequest(conn);
 		
 		var data = new ByteArray();
-		uint8[] buf = new uint8[100];
-		
+		uint8[] buf = new uint8[RECEIVE_BUFFER_SIZE];
+		int retry = 0;
+        
         while(true) {
 			try {
 				ssize_t ret = conn.socket.receive(buf);
-
+                if (retry > 0)
+                    retry = 0;
+                
 				if(ret > 0) {
 					data.append (buf[0:ret]);
 				}
 
-				if(ret < 100) {
+				if(ret < RECEIVE_BUFFER_SIZE) {
 					break;
 				}
 			} catch (Error e) {
 				if (!(e is IOError.WOULD_BLOCK))
 					throw e;
+                else {
+                    if (retry == RECEIVE_MAX_RETRY) {
+                        critical ("no data receved after %d retry and a wait for %d ms", retry + 1, RECEIVE_WAIT_USEC / 1000 * (retry + 1));
+                        throw e;
+                    } else {
+                        retry++;
+                        debug ("IOError.WOULD_BLOCK handled error, retry %d waiting for %d", retry, RECEIVE_WAIT_USEC);
+                        Thread.usleep (RECEIVE_WAIT_USEC); 
+                    }
+                }
 			}
         }
 		
@@ -329,31 +346,31 @@ namespace Valatra {
 
         for(int i=0; i < array.length; i++) {
 			var elem = array.index (i);	
-          if(elem.route.matches(request)) {
-            wrap = elem;
-            break;
-          }
+            if(elem.route.matches(request)) {
+                wrap = elem;
+                break;
+            }
         }
 
         HTTPResponse res = null;
 
         if(wrap != null) {
-          try {
-			res = wrap.process_request (request);
-          } catch(HTTPStatus stat) {
-			int code;
-			
-			if (stat is HTTPStatus.BAD_REQUEST) {
-				code = 504;
-			} else if (stat is HTTPStatus.NOT_FOUND) {
-				code = 404;
-			} else {
-				code = int.parse(stat.message);
-			}
-            res = get_status_handle (code, request);
-          }
+            try {
+                res = wrap.process_request (request);
+            } catch(HTTPStatus stat) {
+                int code;
+
+                if (stat is HTTPStatus.BAD_REQUEST) {
+                    code = 504;
+                } else if (stat is HTTPStatus.NOT_FOUND) {
+                    code = 404;
+                } else {
+                    code = int.parse(stat.message);
+                }
+                res = get_status_handle (code, request);
+            }
         } else {
-          res = get_status_handle (404, request);
+            res = get_status_handle (404, request);
         }
 
         res.create(dos);
