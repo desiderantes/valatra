@@ -229,12 +229,12 @@ namespace Valatra {
 
 		if(handle == null) {
 			res.type ("html");
-			res.body = @"<h1>$stat</h1>";
+			res.body = @"<h1>$stat</h1>".data;
 		} else {
 			try {
 				handle.func(req, res);
 			} catch(HTTPStatus stat) {
-				res.body = "Sorry, something just exploded";
+				res.body = "Sorry, something just exploded".data;
 			}
 		}
 
