@@ -2,7 +2,7 @@ namespace Valatra.Json {
 	public errordomain ParseError {
 		SYNTAX,
 		EOF,
-		UNKNOWN_OBJECT_TYPE
+		OBJECT_INSTANCE
 	}
 
 	private abstract class JsonToken : Object {
@@ -145,25 +145,52 @@ namespace Valatra.Json {
 				_value = value;
 				if (this.owner is ObjectToken) {
 					var obj = (ObjectToken)this.owner;
+					
 					if (obj.instance != null) {
-						if (_value is NumberToken) {
-							var v = ((NumberToken)value).value;
-							if (v == Math.round (v)) {
-								obj.instance.set (name.value, (int) ((NumberToken)value).value);
-							} else {
-								obj.instance.set (name.value, (double) ((NumberToken)value).value);
-							}
-							
-						} else if (_value is StringToken) {
-							obj.instance.set (name.value, (string) ((StringToken)value).value);
-						} else if (_value is ObjectToken) {
-							obj.instance.set (name.value, (Object) ((ObjectToken)value).instance);
-						} else if (_value is BooleanToken) {
-							obj.instance.set (name.value, (bool) ((BooleanToken)value).value);
-						} else if (_value is ArrayToken) {
-							//critical ("Unsupported value type: %s (%p)", _value.get_type ().name (), _value);
+						var cl = (ObjectClass) obj.instance.get_type ().class_ref ();
+						var prop_spec = cl.find_property (name.value);
+						
+						if (prop_spec == null) {
+							critical ("Unknown property %s: %s (%p)", name.value, _value.get_type ().name (), _value);
 						} else {
-							critical ("Unsupported value type: %s (%p)", _value.get_type ().name (), _value);
+							if (_value is NumberToken) {
+								var val = ((NumberToken)value).value;
+								//debug ("val %s(%p).%s = %f (%p)",  obj.instance.get_type ().name (), obj.instance, name.value, val, &val);
+								if (prop_spec.value_type.name () == "gint") {
+									obj.instance.set (name.value, (int) val);
+								} else if (prop_spec.value_type.name () == "guint") {
+									obj.instance.set (name.value, (uint) val);
+								} else if (prop_spec.value_type.name () == "gulong") {
+									obj.instance.set (name.value, (uint) val);
+								} else if (prop_spec.value_type.name () == "glong") {
+									obj.instance.set (name.value, (long) val);
+								} else {
+									obj.instance.set (name.value, (double) val);
+								}
+								
+							} else if (_value is StringToken) {
+								string val = (string) ((StringToken)value).value;
+								//debug ("valstr %s(%p).%s = %s (%p)",  obj.instance.get_type ().name (), obj.instance, name.value, val, val);
+								if (prop_spec.value_type.is_enum ()) {
+									var ecl = (EnumClass) prop_spec.value_type.class_ref ();
+									unowned EnumValue? eval = ecl.get_value_by_nick (val);
+									if (eval != null)
+										obj.instance.set (name.value, eval.value);
+									else {
+										critical ("Unsupported enum value: %s (%p)", val, prop_spec.value_type.name ());
+									}
+								} else {
+									obj.instance.set (name.value, val);
+								}
+							} else if (_value is ObjectToken) {
+								obj.instance.set (name.value, (Object) ((ObjectToken)value).instance);
+							} else if (_value is BooleanToken) {
+								obj.instance.set (name.value, (bool) ((BooleanToken)value).value);
+							} else if (_value is ArrayToken) {
+								//critical ("Unsupported value type: %s (%p)", _value.get_type ().name (), _value);
+							} else {
+								critical ("Unsupported value type: %s (%p)", _value.get_type ().name (), _value);
+							}
 						}
 					}
 				}
@@ -179,38 +206,47 @@ namespace Valatra.Json {
 		}
 	}
 	
-	public delegate Object? ParserClassFactory (Type type, string? prop_name);
-	public delegate Object? ParserArrayItemFactory (Object? owner, string? prop_name, uint index);
+	[CCode(has_target=false)]
+	public delegate Object? ParserClassFactory (Object? owner, string? prop_name, int index = -1) throws Error;
 
-	public static Object? standard_class_factory (Type type, string? prop_name) {
-		var instance = Object.@new (type);
-		return instance;
-	}
-	
-	public static Object? standard_array_item_factory (Object? owner, string? prop_name, uint index) {
+	public static Object? standard_class_factory (Object? owner, string? prop_name, int index = -1) throws Error {
+		Type? type = null;
 		Object? instance = null;
-		
+	
 		if (owner != null) {
 			if (prop_name != null) {
-				unowned Array<Object> a = null;
-				
-				owner.get (prop_name, &a);
-				if (a != null) {
-					instance = a.index (index);
+				if (index == -1) {
+					// Object property
+					var prop = ((ObjectClass)owner.get_type ().class_ref ()).find_property (prop_name);
+					if (prop != null) {
+						type = prop.value_type;
+					}
 				} else {
-					critical ("standard_array_item_factory: array instance is null.");
+					// Array property
+					unowned Array<Object> a = null;
+					
+					owner.get (prop_name, &a);
+					if (a != null) {
+						instance = a.index ((uint)index);
+					} else {
+						throw new ParseError.OBJECT_INSTANCE ("standard_class_factory: array instance is null for property: %s.".printf (prop_name));
+					}
 				}
 			} else {
-				critical ("standard_array_item_factory: prop_name (%s) cannot be null and should be a valid property name of object %s (%p).", prop_name, owner.get_type ().name (), owner);
+				throw new ParseError.OBJECT_INSTANCE ("standard_class_factory: prop_name (%s) cannot be null and should be a valid property name of object %s (%p).".printf (prop_name, owner.get_type ().name (), owner));
 			}
 		} else {
-			critical ("standard_array_item_factory: owner cannot be null.");
+			throw new ParseError.OBJECT_INSTANCE ("standard_class_factory: owner cannot be null.");
+		}
+
+		if (type != null && instance == null) {
+			instance = Object.@new (type);
 		}
 		
 		return instance;
 	}
 	
-	public T? parse<T> (string? data, ParserClassFactory class_factory = standard_class_factory, ParserArrayItemFactory array_item_factory = standard_array_item_factory) throws Error {
+	public Object? parse (string? data, Object? root_instance = null, ParserClassFactory class_factory = standard_class_factory) throws Error {
 		JsonToken current = null;
 		int i = 0;
 		
@@ -227,44 +263,45 @@ namespace Valatra.Json {
 					if (ch == '{') {
 						var obj = new ObjectToken ();
 						string prop_name = null;
-						Type? type = null;
+						Object? owner = null;
+						int index = -1;
 						
-						if (current == null) {
-							type = typeof (T);
-						}
 						if (current is TupleToken) {
 							var t = (TupleToken)current;
-							if (t.name != null)
+							if (t.name != null) {
 								prop_name = t.name.value;
-								
-							if (t.owner is Object && prop_name != null) {
-								var prop = ((ObjectClass) ((Object)((ObjectToken)current.owner).instance).get_type ().class_ref ()).find_property (prop_name);
-								if (prop != null)
-									type = prop.value_type;
+							}
+							owner = ((ObjectToken)current.owner).instance;
+						} else if (current is ArrayToken) {
+							var a = (ArrayToken)current;
+							
+							index = (int) a.values.length ();
+							if (a.owner is TupleToken) {
+								prop_name = ((TupleToken)a.owner).name.value;
+								owner = ((ObjectToken)((TupleToken)a.owner).owner).instance;
+							} else if (a.owner is ObjectToken) {
+								owner = ((ObjectToken)a.owner).instance;
 							}
 						}
-						
-						
-						if (type != null) {
-							obj.instance = class_factory (type, prop_name);
-						} else {
-							if (current is ArrayToken) {
-								var a = (ArrayToken)current;
-								string array_owner_prop_name = null;
-								Object? array_owner_object = null;
-								
-								if (a.owner is TupleToken) {
-									array_owner_prop_name = ((TupleToken)a.owner).name.value;
-									array_owner_object = ((ObjectToken)((TupleToken)a.owner).owner).instance;
-								} else if (a.owner is ObjectToken) {
-									array_owner_object = ((ObjectToken)a.owner).instance;
-								}
-								
-								obj.instance = array_item_factory (array_owner_object, array_owner_prop_name, (uint)a.values.length ());
+					
+						if (current == null) {
+							if (root_instance == null) {
+								obj.instance = class_factory (null, prop_name, index);
 							} else {
-								throw new ParseError.UNKNOWN_OBJECT_TYPE ("Unknown object type for property name: '%s'".printf (prop_name == null ? "(null)" : prop_name));
+								obj.instance = root_instance;
 							}
+						} else {
+							obj.instance = class_factory (owner, prop_name, index);
 						}
+						
+						if (obj.instance == null) {
+							throw new ParseError.OBJECT_INSTANCE ("Can't create %s property name '%s' of object type %s (%p)".printf (
+								index == -1 ? "object instance for" : "instance for array element %u of".printf (index),
+								prop_name == null ? "(null)" : prop_name, 
+								owner == null ? "(null)" : owner.get_type ().name (),
+								owner));
+						}
+
 						obj.start = i;
 						obj.owner = current;
 						current = obj;
@@ -297,7 +334,8 @@ namespace Valatra.Json {
 							var a = (ArrayToken) current.owner;
 							a.values.append (token);
 						} else {
-							throw new ParseError.SYNTAX ("syntax error %s".printf (current == null ? "(null)" : current.to_string ()), i);
+							if (!(current is ObjectToken)) // empty object
+								throw new ParseError.SYNTAX ("syntax error %s".printf (current == null ? "(null)" : current.to_string ()), i);
 						}
 					} else if (ch == '[') {
 						var token = new ArrayToken ();
@@ -317,7 +355,8 @@ namespace Valatra.Json {
 								a.values.append (token);
 							}
 						} else {
-							throw new ParseError.SYNTAX ("unexpected ']' %s", current.get_type ().name ());
+							if (!(token is ArrayToken)) // empty array
+								throw new ParseError.SYNTAX ("unexpected ']' %s", current.get_type ().name ());
 						}
 						
 					} else if (ch == ',') {
@@ -377,7 +416,7 @@ namespace Valatra.Json {
 		if (!(current is ObjectToken)) {
 			throw new ParseError.SYNTAX ("Root object token not defined (%s: %p), only json with the form { ... } are currently supported".printf (current.get_type ().name (), current));
 		}
-		return (T?) ((ObjectToken)current).instance;
+		return ((ObjectToken)current).instance;
 	}
 	
 	private void skip_spaces (string data, ref int i) throws ParseError {
