@@ -265,7 +265,8 @@ namespace Valatra.Json {
 						string prop_name = null;
 						Object? owner = null;
 						int index = -1;
-						
+						//int dbg =-1;
+                        
 						if (current is TupleToken) {
 							var t = (TupleToken)current;
 							if (t.name != null) {
@@ -276,6 +277,7 @@ namespace Valatra.Json {
 							var a = (ArrayToken)current;
 							
 							index = (int) a.values.length ();
+                            //dbg = index;
 							if (a.owner is TupleToken) {
 								prop_name = ((TupleToken)a.owner).name.value;
 								owner = ((ObjectToken)((TupleToken)a.owner).owner).instance;
@@ -287,11 +289,13 @@ namespace Valatra.Json {
 						if (current == null) {
 							if (root_instance == null) {
 								obj.instance = class_factory (null, prop_name, index);
+                                //debug ("%s[%d] = %p", prop_name, index, obj.instance);
 							} else {
 								obj.instance = root_instance;
 							}
 						} else {
 							obj.instance = class_factory (owner, prop_name, index);
+                            //debug ("%s[%d,%d] = %p", prop_name, index, dbg, obj.instance);
 						}
 						
 						if (obj.instance == null) {
@@ -330,9 +334,6 @@ namespace Valatra.Json {
 							var t = (TupleToken) current;
 							t.value = token;
 							current = current.owner;
-						} else if (current is ArrayToken) {
-							var a = (ArrayToken) current.owner;
-							a.values.append (token);
 						} else {
 							if (!(current is ObjectToken)) // empty object
 								throw new ParseError.SYNTAX ("syntax error %s".printf (current == null ? "(null)" : current.to_string ()), i);
@@ -350,10 +351,8 @@ namespace Valatra.Json {
 						current.end = i;
 						i++;
 						if (current is ArrayToken) {
-							if (token is ValueToken) {
-								var a = (ArrayToken)current;
-								a.values.append (token);
-							}
+                            var a = (ArrayToken)current;
+                            a.values.append (token);
 						} else {
 							if (!(token is ArrayToken)) // empty array
 								throw new ParseError.SYNTAX ("unexpected ']' %s", current.get_type ().name ());
@@ -371,10 +370,9 @@ namespace Valatra.Json {
 							current = current.owner;
 							((ObjectToken)current).values.append (tuple);
 						} else if (current is ArrayToken) {
-							if (token is ValueToken) {
-								var array = (ArrayToken)current;
-								array.values.append (current);
-							}
+                            var a = (ArrayToken)current;
+								
+                            a.values.append (current);
 						} else {
 							throw new ParseError.SYNTAX ("syntax error unexpected ',' %s".printf (current.to_string ()));
 						}
