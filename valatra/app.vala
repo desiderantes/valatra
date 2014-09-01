@@ -241,8 +241,8 @@ namespace Valatra {
 		return res;
     }
 
-    private const int RECEIVE_BUFFER_SIZE = 64 * 1024;
-    private const int RECEIVE_MAX_RETRY = 1;
+    private const int RECEIVE_BUFFER_SIZE = 4 * 1024;
+    private const int RECEIVE_MAX_RETRY = 16;
     private const int RECEIVE_WAIT_USEC = 250000; // 250ms
      
     private async void process_request(SocketConnection conn) {
@@ -250,68 +250,103 @@ namespace Valatra {
         var dos = new DataOutputStream(conn.output_stream);
 
         var request = new HTTPRequest(conn);
-		
-		var data = new ByteArray();
+		HTTPResponse res = null;
+		var data = new ByteArray ();
 		uint8[] buf = new uint8[RECEIVE_BUFFER_SIZE];
+        uint8 last_byte = 0;
 		int retry = 0;
+        size_t rcv_content_length = 0;
         
+        conn.socket.set_blocking (false);
         while(true) {
 			try {
 				ssize_t ret = conn.socket.receive(buf);
-                if (retry > 0)
-                    retry = 0;
+				if (ret > 0) {
+                    if (retry > 0) {
+                        retry = 0;
+                    }
+                    
+                    if (request.accept_body) {
+                        data.append (buf[0:ret]);
+                        rcv_content_length -= (int)ret;
+                    } else {
+                        size_t si = 0;
+                        size_t idx = 0;
+                     
+                        while (idx < ret) {
+                            if (last_byte == '\r' && buf[idx] == '\n') {
+                                data.append (buf[si:(idx+1)]);
+                               
+                                if (data.len == 2
+                                    && data.data[0] == '\r'
+                                    && data.data[1] == '\n') {
+                                 
+                                    string content_length = request.headers.@get ("Content-Length");
+                                    if (rcv_content_length == 0 && content_length != null) {
+                                        rcv_content_length = int.parse (content_length);
+                                    }
+                                    
+                                    // prepare to receive body data
+                                    request.accept_body = true;
+                                    data = new ByteArray ();
+                                    si = idx + 1;
+                                    break;
+                                } else {
+                                    // strip \r\n and ensure string is null terminated
+                                    data.data[data.len - 2] = 0;
+                                    // parse header line
+                                    request.parse ((string) data.data);
+                                    // next line
+                                    data = new ByteArray ();
+                                }
+                                si = idx + 1;
+                                last_byte = 0;
+                            } else {
+                                last_byte = buf[idx];
+                            }
+                            idx++;
+                        }
+                        
+                        if (si < ret) {
+                            data.append (buf[si:ret]);
+                            if (request.accept_body) {
+                                rcv_content_length -= (ret - si);
+                            }
+                        }
+                    }
+				}
                 
-				if(ret > 0) {
-					data.append (buf[0:ret]);
-				}
-
-				if(ret < RECEIVE_BUFFER_SIZE) {
-					break;
-				}
+                if (ret == 0 || (rcv_content_length <= 0 && request.accept_body == true)) {
+                    break;
+                }
+                
 			} catch (Error e) {
-				if (!(e is IOError.WOULD_BLOCK))
+				if (!(e is IOError.WOULD_BLOCK)) {
+                    critical ("error receiving data: %s", e.message);
 					throw e;
-                else {
+                } else {
                     if (retry == RECEIVE_MAX_RETRY) {
-                        critical ("no data receved after %d retry and a wait for %d ms", retry + 1, RECEIVE_WAIT_USEC / 1000 * (retry + 1));
+                        critical ("no data received after %d retry and a wait for %d ms", retry, RECEIVE_WAIT_USEC / 1000 * (retry));
                         throw e;
                     } else {
                         retry++;
-                        debug ("IOError.WOULD_BLOCK handled error, retry %d waiting for %d", retry, RECEIVE_WAIT_USEC);
+                        debug ("IOError.WOULD_BLOCK handled error retry %d of %d, waiting for %d", retry, RECEIVE_MAX_RETRY, RECEIVE_WAIT_USEC);
                         Thread.usleep (RECEIVE_WAIT_USEC); 
                     }
                 }
 			}
         }
 		
-		// ensure string is null terminated
-		data.append (new uint8[] {0});
-		
-        var req_str = (string)data.data;
-
-	
-        while(true) {
-          if(req_str == "" || req_str == null) {
-            break;
-          }
-          var lines = req_str.split("\r\n", 2);
-          req_str = lines[1];
-
-          if(lines[0] == null) {
-            break;
-          } else if(lines[0] == "") {
-            request.accept_body = true;
-            request.parse(lines[1]);
-            break;
-          } else {
-            request.parse(lines[0]);
-          }
+        // parse body
+        if (request.accept_body && data.len > 0) {
+            // ensure string is null terminated
+            data.append (new uint8[] {0});
+            request.parse ((string)data.data);
         }
-
+     
         request.app = this;
-
-		debug ("processing request: '%s'", request.uri);
-		
+        debug ("processing request: '%s'", request.uri);
+        
         // check cache first
         var etag = request.headers["If-None-Match"];
         if(etag != null) {
@@ -334,7 +369,6 @@ namespace Valatra {
 
         if(index == -1) {
           critical ("process_request: bad method: %s", request.method);
-
           var r = get_status_handle(400, request);
 
           r.create(dos);
@@ -345,14 +379,12 @@ namespace Valatra {
         RouteWrapper wrap = null;
 
         for(int i=0; i < array.length; i++) {
-			var elem = array.index (i);	
+            var elem = array.index (i);	
             if(elem.route.matches(request)) {
                 wrap = elem;
                 break;
             }
         }
-
-        HTTPResponse res = null;
 
         if(wrap != null) {
             try {
@@ -373,7 +405,7 @@ namespace Valatra {
             res = get_status_handle (404, request);
         }
 
-        res.create(dos);
+        res.create(dos);        
       } catch (Error e) {
         critical ("process_request(): %s", e.message);
       }
