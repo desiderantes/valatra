@@ -5,6 +5,12 @@ namespace Valatra.Json {
 		OBJECT_INSTANCE
 	}
 
+    [Flags]
+    public enum ParserOptions {
+        DEFAULT = 0,
+        ALLOW_MISSING_PROPERTIES = 1
+    }
+    
 	private abstract class JsonToken : Object {
 		public int start;
 		public int end;
@@ -134,9 +140,14 @@ namespace Valatra.Json {
 
 	private class TupleToken : JsonToken {
 		private JsonToken? _value = null;
-		
+		private ParserOptions _parser_options = ParserOptions.DEFAULT;
+        
 		public StringToken? name = null;
 		
+        public TupleToken (ParserOptions parser_options) {
+            this._parser_options = parser_options;
+        }
+        
 		public JsonToken? value {
 			get {
 				return _value;
@@ -151,7 +162,9 @@ namespace Valatra.Json {
 						var prop_spec = cl.find_property (name.value);
 						
 						if (prop_spec == null) {
-							critical ("Unknown property %s: %s (%p)", name.value, _value.get_type ().name (), _value);
+                            if ((this._parser_options & ParserOptions.ALLOW_MISSING_PROPERTIES) != ParserOptions.ALLOW_MISSING_PROPERTIES) {
+                                critical ("Unknown property %s: %s (%p)", name.value, _value.get_type ().name (), _value);
+                            }
 						} else {
 							if (_value is NumberToken) {
 								var val = ((NumberToken)value).value;
@@ -246,7 +259,7 @@ namespace Valatra.Json {
 		return instance;
 	}
 	
-	public Object? parse (string? data, Object? root_instance = null, ParserClassFactory class_factory = standard_class_factory) throws Error {
+	public Object? parse (string? data, Object? root_instance = null, ParserOptions parser_options = ParserOptions.DEFAULT, ParserClassFactory class_factory = standard_class_factory) throws Error {
 		JsonToken current = null;
 		int i = 0;
 		
@@ -317,7 +330,7 @@ namespace Valatra.Json {
 						if (!(current.owner is ObjectToken)) {
 							throw new ParseError.SYNTAX ("syntax error parsing tuple, owner is not an Object: %s (%s)".printf (current.owner == null ? "(null)" : current.owner.get_type ().name (), current.to_string ()));
 						}
-						var token = new TupleToken ();
+						var token = new TupleToken (parser_options);
 						token.start = current.start;
 						token.name = (StringToken)current;
 						token.owner = current.owner;
